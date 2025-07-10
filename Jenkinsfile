@@ -1,53 +1,56 @@
-    pipeline {
-        agent any
+pipeline {
+    agent any
 
-        environment {
-            IMAGE_NAME = '2tier-backend'
-            DOCKERHUB_REPO = 'saipavan3105/2tier-backend'
-            AWS_ECR_REPO = 'aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 408041843102.dkr.ecr.ap-south-1.amazonaws.com'
-        }
-
-        stages {
-            stage('Checkout Code') {
-        steps {
-            git branch: 'main', credentialsId: 'github-creds', url: 'https://github.com/saipavanreddy/aarambh.git'
-        }
+    environment {
+        DOCKER_IMAGE = 'saipavan3105/aarambh:latest'
+        AWS_REGION = 'ap-south-1'
+        AWS_ACCOUNT_ID = '408041843102'
+        ECR_REPO = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/aarambh"
     }
 
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/saipavanreddy/aarambh.git'
+            }
+        }
 
-            stage('Maven Build') {
-                steps {
-                    sh 'mvn clean package -DskipTests'
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE .'
+                sh 'docker tag $DOCKER_IMAGE $ECR_REPO'
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                 }
             }
+        }
 
-            stage('Build Docker Image') {
-                steps {
-                    sh 'docker build -t $IMAGE_NAME .'
-                }
+        stage('Push to Docker Hub') {
+            steps {
+                sh 'docker push $DOCKER_IMAGE'
             }
+        }
 
-            stage('Push to DockerHub') {
-                steps {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh '''
-                            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                            docker tag $IMAGE_NAME $DOCKERHUB_REPO:latest
-                            docker push $DOCKERHUB_REPO:latest
-                        '''
-                    }
-                }
-            }
-
-            stage('Push to AWS ECR') {
-                steps {
+        stage('Push to AWS ECR') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                     sh '''
-                        aws ecr get-login-password | docker login --username AWS --password-stdin $AWS_ECR_REPO
-                        docker tag $IMAGE_NAME $AWS_ECR_REPO:latest
-                        docker push $AWS_ECR_REPO:latest
+                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                        aws configure set region $AWS_REGION
+
+                        aws ecr get-login-password --region $AWS_REGION | \
+                        docker login --username AWS --password-stdin $ECR_REPO
+
+                        docker push $ECR_REPO
                     '''
                 }
             }
         }
     }
-
+}
