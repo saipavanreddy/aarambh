@@ -8,8 +8,11 @@ pipeline {
     stages {
         stage('Download JAR from GitHub') {
             steps {
-                // Pull your prebuilt JAR (update if your URL is different)
-                sh 'wget https://raw.githubusercontent.com/saipavanreddy/aarambh/main/app.jar -O app.jar'
+		sh '''
+ 		 git clone https://github.com/saipavanreddy/aarambh.git
+  		 cp aarambh/demo-0.0.1-SNAPSHOT.jar app.jar
+		'''
+
             }
         }
 
