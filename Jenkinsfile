@@ -6,16 +6,6 @@ pipeline {
     }
 
     stages {
-  #      stage('Download JAR from GitHub') {
-  #          steps {
-#		sh '''
-# 		 git clone https://github.com/saipavanreddy/aarambh.git
-#  		 cp aarambh/demo-0.0.1-SNAPSHOT.jar app.jar
-#		'''
-#
- #           }
- #       }
-
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t $DOCKER_IMAGE:latest .'
