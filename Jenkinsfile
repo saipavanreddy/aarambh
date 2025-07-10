@@ -32,7 +32,7 @@ pipeline {
 
         stage('Run Container on Host') {
             steps {
-                sh 'docker run -d -p 8080:8080 --name aarambh-app $IMAGE_NAME:$TAG'
+                sh 'docker run -d -p 5601:8080 --name aarambh-app $IMAGE_NAME:$TAG'
             }
         }
     }
